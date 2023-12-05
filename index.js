@@ -5,71 +5,104 @@ const storeKey = 'fileName';
 const dbVersion = 1;
 let db = null;
 
+const imageURL = 'https://picsum.photos/v2/list';
+let data;
+
+console.log('111111111111111', data);
+
+async function thing() {
+	console.log('thing');
+	try {
+		let response = await fetch(imageURL);
+		
+		if (!response.ok) {
+			throw new Error(`HTTP error! Status: ${response.status}`);
+		}
+		
+		data = await response.json();
+		console.log('datax: ', data);
+		saveStuff()
+	} catch (error) {
+		console.error('Error:', error);
+	}
+}
+
+thing()
+
+console.log('22222222222222222222222', data);
 // IndexedDB Methods
 const initIndexedDb = (dbName, stores) => {
-	return new Promise((resolve, reject) => {
-		const request = indexedDB.open(dbName, dbVersion);
-		request.onerror = (event) => {
-			reject(event.target.error);
-		};
-		request.onsuccess = (event) => {
-			resolve(event.target.result);
-		};
-		request.onupgradeneeded = (event) => {
-			stores.forEach((store) => {
-				const objectStore = event.target.result.createObjectStore(store.name, {
-					keyPath: store.keyPath,
-				});
-				objectStore.createIndex(store.keyPath, store.keyPath, { unique: true });
-			});
-		};
-	});
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, dbVersion);
+    request.onerror = (event) => {
+      reject(event.target.error);
+    };
+    request.onsuccess = (event) => {
+      resolve(event.target.result);
+    };
+    request.onupgradeneeded = (event) => {
+      stores.forEach((store) => {
+        const objectStore = event.target.result.createObjectStore(store.name, {
+          keyPath: store.keyPath,
+        });
+        objectStore.createIndex(store.keyPath, store.keyPath, { unique: true });
+      });
+    };
+  });
 };
 
 const clearEntriesFromIndexedDb = () => {
-	const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+  const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
 
-	store.clear();
-	clearGalleryImages();
+  store.clear();
+  clearGalleryImages();
 
-	store.transaction.oncomplete = () => {
-		renderStorageQuotaInfo();
-	};
+  store.transaction.oncomplete = () => {
+    renderStorageQuotaInfo();
+  };
 };
 
 const deleteImageFromIndexedDb = (storeKey) => {
-	const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
-	store.delete(storeKey);
-	store.transaction.oncomplete = async () => {
-		clearGalleryImages();
-		renderAvailableImagesFromDb();
-		await renderStorageQuotaInfo();
-	};
+  const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+  store.delete(storeKey);
+  store.transaction.oncomplete = async () => {
+    clearGalleryImages();
+    renderAvailableImagesFromDb();
+    await renderStorageQuotaInfo();
+  };
 };
 
 const renderAvailableImagesFromDb = () => {
-	db.transaction(storeName, 'readonly').objectStore(storeName).openCursor().onsuccess = (event) => {
-		const cursor = event.target.result;
-		if (cursor) {
-			renderGalleryColumn(cursor);
-			cursor.continue();
-		}
-	};
+  db
+    .transaction(storeName, 'readonly')
+    .objectStore(storeName)
+    .openCursor().onsuccess = (event) => {
+    const cursor = event.target.result;
+    if (cursor) {
+      renderGalleryColumn(cursor);
+      cursor.continue();
+    }
+  };
 };
 
 const handleSearch = async (ev) => {
-	ev.preventDefault();
-	clearGalleryImages();
-	const searchInput = document.getElementById('search').value;
-	db.transaction(storeName, 'readonly').objectStore(storeName).openCursor().onsuccess = (event) => {
-		const cursor = event.target.result;
-		if (cursor) {
-			if (cursor.value[storeKey].toLowerCase().includes(searchInput.toLowerCase())) {
-				renderGalleryColumn(cursor);
-			}
-			cursor.continue();
-		}
-	};
+  ev.preventDefault();
+  clearGalleryImages();
+  const searchInput = document.getElementById('search').value;
+  db
+    .transaction(storeName, 'readonly')
+    .objectStore(storeName)
+    .openCursor().onsuccess = (event) => {
+    const cursor = event.target.result;
+    if (cursor) {
+      if (
+        cursor.value[storeKey].toLowerCase().includes(searchInput.toLowerCase())
+      ) {
+        renderGalleryColumn(cursor);
+      }
+      cursor.continue();
+    }
+  };
 };
 
 // Form functions
@@ -80,16 +113,17 @@ const handleSearch = async (ev) => {
  * @returns {Promise<void>}
  */
 const handleSubmit = async (ev) => {
-	ev.preventDefault();
-	const file = await getFileFromInput();
-	const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
-	store.add(file);
+  ev.preventDefault();
+  const file = await getFileFromInput();
+  console.log('file: ', file);
+  const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+  store.add(file);
 
-	store.transaction.oncomplete = () => {
-		clearGalleryImages();
-		renderAvailableImagesFromDb();
-		renderStorageQuotaInfo();
-	};
+  store.transaction.oncomplete = () => {
+    clearGalleryImages();
+    renderAvailableImagesFromDb();
+    renderStorageQuotaInfo();
+  };
 };
 
 /**
@@ -97,23 +131,47 @@ const handleSubmit = async (ev) => {
  * @returns {Promise<object>}
  */
 const getFileFromInput = () => {
-	return new Promise((resolve, reject) => {
-		const file = document.getElementById('file').files[0];
-		const reader = new FileReader();
-		reader.onload = (event) => {
-			document.getElementById('file').value = '';
-			resolve({
-				[storeKey]: file.name,
-				type: file.type,
-				size: file.size,
-				data: event.target.result,
-			});
-		};
-		reader.onerror = (event) => {
-			reject(event.target.error);
-		};
-		reader.readAsArrayBuffer(file);
-	});
+  return new Promise((resolve, reject) => {
+    const file = document.getElementById('file').files[0];
+	console.log('Uploaded Ite,', file);
+    const reader = new FileReader();
+	
+    reader.onload = (event) => {
+		console.log('event.target.result', event.target.result);
+      document.getElementById('file').value = '';
+      resolve({
+        [storeKey]: file.name,
+        type: file.type,
+        size: file.size,
+        data: event.target.result,
+      });
+    };
+    reader.onerror = (event) => {
+      reject(event.target.error);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+const breakFileDown = (file) => {
+  return new Promise((resolve, reject) => {
+	console.log('BreakDownMe', file);
+    const reader = new FileReader();
+	
+    reader.onload = (event) => {
+		console.log('event.target.result', event.target.result);
+      resolve({
+        [storeKey]: file.name,
+        type: file.type,
+        size: file.size,
+        data: event.target.result,
+      });
+    };
+    reader.onerror = (event) => {
+      reject(event.target.error);
+    };
+    reader.readAsArrayBuffer(file);
+  });
 };
 
 // Methods for the image gallery
@@ -122,60 +180,60 @@ const getFileFromInput = () => {
  * @desc Clears the gallery images from the DOM
  */
 const clearGalleryImages = () => {
-	document.getElementById('images').innerHTML = '';
-}
+  document.getElementById('images').innerHTML = '';
+};
 
 /**
  * @desc Renders the gallery images in the DOM
  * @param {IDBCursorWithValue} cursor
  */
 const renderGalleryColumn = (cursor) => {
-	const galleryContainer = document.getElementById('images');
-	const imageBuffer = cursor.value.data;
-	const imageBlog = new Blob([imageBuffer]);
+  const galleryContainer = document.getElementById('images');
+  const imageBuffer = cursor.value.data;
+  const imageBlog = new Blob([imageBuffer]);
 
-	const col = document.createElement('div');
-	col.classList.add('col-12', 'col-md-6', 'col-lg-4');
+  const col = document.createElement('div');
+  col.classList.add('col-12', 'col-md-6', 'col-lg-4');
 
-	const card = document.createElement('div');
-	card.classList.add('card');
+  const card = document.createElement('div');
+  card.classList.add('card');
 
-	const cardBody = document.createElement('div');
-	cardBody.classList.add('card-body');
+  const cardBody = document.createElement('div');
+  cardBody.classList.add('card-body');
 
-	const image = document.createElement('img');
-	image.src = URL.createObjectURL(imageBlog);
-	image.classList.add('card-img-top');
+  const image = document.createElement('img');
+  image.src = URL.createObjectURL(imageBlog);
+  image.classList.add('card-img-top');
 
-	const title = document.createElement('h5');
-	title.classList.add('card-title');
-	title.innerText = cursor.value['type'];
+  const title = document.createElement('h5');
+  title.classList.add('card-title');
+  title.innerText = cursor.value['type'];
 
-	const subTitle = document.createElement('h6');
-	subTitle.classList.add('card-subtitle');
-	subTitle.innerText = formatAsByteString(+cursor.value['size'])
+  const subTitle = document.createElement('h6');
+  subTitle.classList.add('card-subtitle');
+  subTitle.innerText = formatAsByteString(+cursor.value['size']);
 
-	const text = document.createElement('p');
-	text.classList.add('card-text');
-	text.innerText = cursor.value[storeKey];
+  const text = document.createElement('p');
+  text.classList.add('card-text');
+  text.innerText = cursor.value[storeKey];
 
-	const deleteButton = document.createElement('button');
-	deleteButton.classList.add('btn', 'btn-danger');
-	deleteButton.innerText = 'Delete';
-	deleteButton.addEventListener('click', () => {
-		deleteImageFromIndexedDb(cursor.value[storeKey]);
-	})
+  const deleteButton = document.createElement('button');
+  deleteButton.classList.add('btn', 'btn-danger');
+  deleteButton.innerText = 'Delete';
+  deleteButton.addEventListener('click', () => {
+    deleteImageFromIndexedDb(cursor.value[storeKey]);
+  });
 
-	cardBody.appendChild(title);
-	cardBody.appendChild(subTitle);
-	cardBody.appendChild(text)
-	cardBody.appendChild(deleteButton);
-	card.appendChild(image);
-	card.appendChild(cardBody);
-	col.appendChild(card);
+  cardBody.appendChild(title);
+  cardBody.appendChild(subTitle);
+  cardBody.appendChild(text);
+  cardBody.appendChild(deleteButton);
+  card.appendChild(image);
+  card.appendChild(cardBody);
+  col.appendChild(card);
 
-	galleryContainer.appendChild(col);
-}
+  galleryContainer.appendChild(col);
+};
 
 // Methods for Storage quota
 /**
@@ -183,15 +241,15 @@ const renderGalleryColumn = (cursor) => {
  * @returns {Promise<{totalQuota: string, usedQuota: string, freeQuota: string}>}
  */
 const getStorageQuotaText = async () => {
-	const estimate = await navigator.storage.estimate();
-	const totalQuota = +(estimate.quota || 0);
-	const usedQuota = +(estimate.usage || 0);
-	const freeQuota = totalQuota - usedQuota;
-	return {
-		totalQuota: formatAsByteString(totalQuota),
-		usedQuota: formatAsByteString(usedQuota),
-		freeQuota: formatAsByteString(freeQuota)
-	};
+  const estimate = await navigator.storage.estimate();
+  const totalQuota = +(estimate.quota || 0);
+  const usedQuota = +(estimate.usage || 0);
+  const freeQuota = totalQuota - usedQuota;
+  return {
+    totalQuota: formatAsByteString(totalQuota),
+    usedQuota: formatAsByteString(usedQuota),
+    freeQuota: formatAsByteString(freeQuota),
+  };
 };
 
 /**
@@ -199,36 +257,61 @@ const getStorageQuotaText = async () => {
  * @returns {Promise<void>}
  */
 const renderStorageQuotaInfo = async () => {
-	const { totalQuota, usedQuota, freeQuota } = await getStorageQuotaText();
-	document.getElementById('storage-total').textContent = totalQuota;
-	document.getElementById('storage-used').textContent = usedQuota;
-	document.getElementById('storage-free').textContent = freeQuota;
-}
+	console.log('quotea');
+  const { totalQuota, usedQuota, freeQuota } = await getStorageQuotaText();
+  document.getElementById('storage-total').textContent = totalQuota;
+  document.getElementById('storage-used').textContent = usedQuota;
+  document.getElementById('storage-free').textContent = freeQuota;
+};
 
 // Util functions
 const formatAsByteString = (bytes) => {
-	const oneGigabyte = 1024 * 1024 * 1024;
-	const oneMegabyte = 1024 * 1024;
-	const oneKilobyte = 1024;
+  const oneGigabyte = 1024 * 1024 * 1024;
+  const oneMegabyte = 1024 * 1024;
+  const oneKilobyte = 1024;
 
-	return bytes > oneGigabyte ? `${(bytes / oneGigabyte).toFixed(2)} GB` : bytes > oneMegabyte ? `${(bytes / oneMegabyte).toFixed(2)} MB` : `${(bytes / oneKilobyte).toFixed(2)}KB`;
+  return bytes > oneGigabyte
+    ? `${(bytes / oneGigabyte).toFixed(2)} GB`
+    : bytes > oneMegabyte
+    ? `${(bytes / oneMegabyte).toFixed(2)} MB`
+    : `${(bytes / oneKilobyte).toFixed(2)}KB`;
+};
+
+function saveStuff() {
+	console.log('QQQQQQQ');
+	console.log('data7', data[0]);
+	
+	data.forEach(element => {
+		console.log('Element', element);
+		let file2 = breakFileDown(element)
+		console.log('file2222', file2);
+		const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+		//store.add(file2);
+	});
+
 }
-
 
 // Init event listeners
 document.querySelector('#file-form')?.addEventListener('submit', handleSubmit);
-document.querySelector('#search-form')?.addEventListener('submit', handleSearch);
-document.querySelector('#clear-button')?.addEventListener('click', clearEntriesFromIndexedDb);
+document
+  .querySelector('#search-form')
+  ?.addEventListener('submit', handleSearch);
+document
+  .querySelector('#clear-button')
+  ?.addEventListener('click', clearEntriesFromIndexedDb);
 
 window.addEventListener('load', async () => {
-	/** Uncomment the following code to enable user's persistent storage settings */
-	// const requestPermission = await navigator.storage.persisted();
-	// const persistent = await navigator.storage.persist();
-	// if (persistent && requestPermission) {
-	db = await initIndexedDb('my-db', [{ name: storeName, keyPath: storeKey }]);
-	renderAvailableImagesFromDb();
-	await renderStorageQuotaInfo();
-	// } else {
-	// 	console.warn('Persistence is not supported');
-	// }
+  console.log('xzzzzzzzzzzzzzzzzzzzzzzzzz');
+  /** Uncomment the following code to enable user's persistent storage settings */
+  // const requestPermission = await navigator.storage.persisted();
+  // const persistent = await navigator.storage.persist();
+  // if (persistent && requestPermission) {
+  db = await initIndexedDb('my-db', [{ name: storeName, keyPath: storeKey }]);
+  renderAvailableImagesFromDb();
+  await renderStorageQuotaInfo();
+  // } else {
+  // 	console.warn('Persistence is not supported');
+  // }
 });
+
+console.log('END');
